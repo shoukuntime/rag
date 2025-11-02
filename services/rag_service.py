@@ -1,46 +1,77 @@
-import os
 import pymongo
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from pydantic import SecretStr, BaseModel, Field
 
-from ..env_settings import EnvSettings
+from env_settings import EnvSettings
 
 env_settings = EnvSettings()
-if not env_settings.GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY not found in environment variables.")
 
-# 設置 Gemini LLM
-llm = ChatGoogleGenerativeAI(model=env_settings.MODEL_NAME)
+llm = ChatGoogleGenerativeAI(
+    model=env_settings.MODEL_NAME,
+    google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
+)
 
-# 連接 MongoDB
 client = pymongo.MongoClient(env_settings.MONGO_URI)
-ATLAS_VECTOR_SEARCH_INDEX_NAME = "vector_index"
 
-# 初始化 vector store
 vector_store = MongoDBAtlasVectorSearch(
     collection=client[env_settings.DB_NAME][env_settings.COLLECTION_NAME],
-    embedding=GoogleGenerativeAIEmbeddings(model=env_settings.EMBEDDING_MODEL),
-    index_name=ATLAS_VECTOR_SEARCH_INDEX_NAME
+    embedding=GoogleGenerativeAIEmbeddings(
+        model=env_settings.EMBEDDING_MODEL,
+        google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
+    ),
+    index_name=env_settings.INDEX_NAME
 )
 
-retriever = vector_store.as_retriever()
 
-template = """Answer the question based only on the following context:
+class Answer(BaseModel):
+    answer: str = Field(description="問題的答案。")
+
+
+llm_parser = JsonOutputParser(pydantic_object=Answer)
+
+template = """你是一位回答問題的助手。請僅根據以下參考資料回答問題，若無法回答請如實回覆。
+---
+參考資料:
 {context}
-
-Question: {question}
+---
+問題: {question}
+---
+{format_instructions}
 """
-prompt = ChatPromptTemplate.from_template(template)
+prompt = PromptTemplate.from_template(
+    template,
+    partial_variables={"format_instructions": llm_parser.get_format_instructions()}
+)
 
-def format_docs(docs):
+
+def format_docs_for_prompt(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-    | StrOutputParser()
-)
+
+def get_references(docs_with_scores):
+    return [{"page_content": doc.page_content, "score": score} for doc, score in docs_with_scores]
+
+
+llm_chain = prompt | llm | llm_parser
+
+
+def get_rag_result(question: str, top_k: int = 5) -> dict:
+    docs_with_scores = vector_store.similarity_search_with_score(question, k=top_k)
+
+    docs = [doc for doc, score in docs_with_scores]
+    context = format_docs_for_prompt(docs)
+    references = get_references(docs_with_scores)
+
+    llm_response = llm_chain.invoke({
+        "context": context,
+        "question": question
+    })
+
+    return {
+        "question": question,
+        "answer": llm_response["answer"],
+        "reference": references
+    }
