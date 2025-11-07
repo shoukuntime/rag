@@ -13,10 +13,6 @@ embeddings = GoogleGenerativeAIEmbeddings(model=env_settings.EMBEDDING_MODEL)
 
 
 def ingest_data():
-    if not env_settings.MONGO_URI:
-        raise ValueError("MONGO_URI not found in environment variables.")
-
-    # 從 data 資料夾載入文件
     reader = DirectoryLoader('./data')
     documents = reader.load()
     print(f"Loaded {len(documents)} document(s).")
