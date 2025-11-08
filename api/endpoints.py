@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from services.rag_service import get_rag_result
+from utils.rag_service import get_rag_result
 
 router = APIRouter()
 

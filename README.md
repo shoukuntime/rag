@@ -37,7 +37,7 @@
 1.  **資料導入**:
     執行 `ingest.py` 腳本，將 `data/` 目錄下的文本資料轉換為向量並儲存到 MongoDB Atlas。
     ```bash
-    python ingest.py
+    python handler.py
     ```
 
 2.  **啟動 API**:

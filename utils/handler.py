@@ -13,7 +13,7 @@ embeddings = GoogleGenerativeAIEmbeddings(model=env_settings.EMBEDDING_MODEL)
 
 
 def ingest_data():
-    reader = DirectoryLoader('./data')
+    reader = DirectoryLoader('../data')
     documents = reader.load()
     print(f"Loaded {len(documents)} document(s).")
 
