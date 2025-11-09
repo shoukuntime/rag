@@ -10,7 +10,7 @@ class EnvSettings(BaseSettings):
     MODEL_NAME: Optional[str] = "models/gemini-2.5-flash"
     EMBEDDING_MODEL: Optional[str] = "models/gemini-embedding-001"
 
-    MONGO_URI: Optional[str] = None
+    POSTGRES_URI: Optional[str] = "postgresql://postgres:postgres@localhost:5432/rag"
     DB_NAME: Optional[str] = "rag_db"
     COLLECTION_NAME: Optional[str] = "rag_collection"
     INDEX_NAME: Optional[str] = "vector_index"

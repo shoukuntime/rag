@@ -1,8 +1,7 @@
-import pymongo
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_mongodb import MongoDBAtlasVectorSearch
+from langchain_postgres import PGVector
 from pydantic import SecretStr, BaseModel, Field
 
 from env_settings import EnvSettings
@@ -14,15 +13,15 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
 )
 
-client = pymongo.MongoClient(env_settings.MONGO_URI)
+embeddings = GoogleGenerativeAIEmbeddings(
+    model=env_settings.EMBEDDING_MODEL,
+    google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
+)
 
-vector_store = MongoDBAtlasVectorSearch(
-    collection=client[env_settings.DB_NAME][env_settings.COLLECTION_NAME],
-    embedding=GoogleGenerativeAIEmbeddings(
-        model=env_settings.EMBEDDING_MODEL,
-        google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
-    ),
-    index_name=env_settings.INDEX_NAME
+vector_store = PGVector(
+    collection_name=env_settings.COLLECTION_NAME,
+    connection=env_settings.POSTGRES_URI,
+    embeddings=embeddings,
 )
 
 

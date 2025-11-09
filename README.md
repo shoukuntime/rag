@@ -6,7 +6,7 @@
 
 *   **FastAPI**: 用於建立 API 的非同步 Web 框架。
 *   **LlamaIndex**: 一個用於建立和查詢索引的框架，是本專案 RAG 功能的核心。
-*   **MongoDB Atlas**: 作為向量資料庫，儲存文本資料的向量表示。
+*   **PostgreSQL**: 作為向量資料庫，儲存文本資料的向量表示。
 *   **Hugging Face Embeddings**: 使用 `BAAI/bge-small-zh-v1.5` 模型來產生文本的嵌入向量。
 *   **Google Gemini**: 使用 `gemini-1.5-flash` 模型來根據檢索到的資訊產生答案。
 
@@ -30,12 +30,12 @@
     ```
 
 2.  **設定環境變數**:
-    在 `env_settings.py` 檔案中設定您的 `GOOGLE_API_KEY` 和 `MONGO_URI`。
+    在 `env_settings.py` 檔案中設定您的 `GOOGLE_API_KEY` 和 `POSTGRES_URI`。
 
 ## 使用方法
 
 1.  **資料導入**:
-    執行 `ingest.py` 腳本，將 `data/` 目錄下的文本資料轉換為向量並儲存到 MongoDB Atlas。
+    執行 `ingest.py` 腳本，將 `data/` 目錄下的文本資料轉換為向量並儲存到 PostgreSQL。
     ```bash
     python handler.py
     ```
