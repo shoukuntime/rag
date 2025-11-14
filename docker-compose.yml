@@ -3,23 +3,37 @@ version: '3.8'
 services:
   api:
     build: .
+    container_name: rag-api
     ports:
       - "8000:8000"
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+      DATABASE_URL: ${POSTGRES_URI}
     depends_on:
       - db
 
   db:
-    image: postgres:13
+    image: pgvector/pgvector:pg13
+    container_name: rag-postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=mydatabase
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+
+  adminer:
+    image: adminer
+    container_name: rag-adminer
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:

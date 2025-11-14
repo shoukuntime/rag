@@ -6,14 +6,12 @@ BASE_DIR = Path(__file__).parent
 
 
 class EnvSettings(BaseSettings):
-    GOOGLE_API_KEY: Optional[str] = None
-    MODEL_NAME: Optional[str] = "models/gemini-2.5-flash"
-    EMBEDDING_MODEL: Optional[str] = "models/gemini-embedding-001"
+    GOOGLE_API_KEY: str
+    MODEL_NAME: str
+    EMBEDDING_MODEL: str
 
-    POSTGRES_URI: Optional[str] = "postgresql://postgres:postgres@localhost:5432/rag"
-    DB_NAME: Optional[str] = "rag_db"
-    COLLECTION_NAME: Optional[str] = "rag_collection"
-    INDEX_NAME: Optional[str] = "vector_index"
+    POSTGRES_URI: str
+    COLLECTION_NAME: str
 
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 50
