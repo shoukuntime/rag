@@ -1,11 +1,11 @@
 import re
-
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_postgres import PGVector
-
+from pydantic import SecretStr
 from env_settings import EnvSettings
 
+env_settings = EnvSettings()
 
 def chinese_to_int(s):
     """
@@ -89,13 +89,14 @@ def parse_labor_law_with_chapters(file_path):
     return result
 
 
-env_settings = EnvSettings()
-
-embeddings = GoogleGenerativeAIEmbeddings(model=env_settings.EMBEDDING_MODEL, google_api_key=env_settings.GOOGLE_API_KEY)
+embeddings = GoogleGenerativeAIEmbeddings(
+    model=env_settings.EMBEDDING_MODEL,
+    google_api_key=SecretStr(env_settings.GOOGLE_API_KEY)
+)
 
 
 def ingest_data():
-    file_path = '../data/labor_law.txt'
+    file_path = 'data/labor_law.txt'
     parsed_law = parse_labor_law_with_chapters(file_path)
     print(f"Parsed {len(parsed_law)} articles.")
 

@@ -6,12 +6,12 @@ BASE_DIR = Path(__file__).parent
 
 
 class EnvSettings(BaseSettings):
-    GOOGLE_API_KEY: str
-    MODEL_NAME: str
-    EMBEDDING_MODEL: str
+    GOOGLE_API_KEY: str = ""
+    MODEL_NAME: str = ""
+    EMBEDDING_MODEL: str = ""
 
-    POSTGRES_URI: str
-    COLLECTION_NAME: str
+    POSTGRES_URI: str = ""
+    COLLECTION_NAME: str = ""
 
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 50

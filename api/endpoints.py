@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from utils.rag_service import get_rag_result
+from utils.handler import ingest_data
 
 router = APIRouter()
 
@@ -18,3 +19,8 @@ def query_labor_law(request: QueryRequest):
 @router.get("/")
 def read_root():
     return {"message": "歡迎使用《勞基法》RAG API"}
+
+@router.post("/handle")
+def handle_data_ingestion():
+    ingest_data()
+    return {"message": "Data ingestion started successfully."}

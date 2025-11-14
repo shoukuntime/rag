@@ -51,7 +51,7 @@ def format_docs_for_prompt(docs):
 
 
 def get_references(docs_with_scores):
-    return [{"page_content": doc.page_content, "score": score} for doc, score in docs_with_scores]
+    return [{"page_content": doc.page_content, "metadata": doc.metadata, "score": score} for doc, score in docs_with_scores]
 
 
 llm_chain = prompt | llm | llm_parser
