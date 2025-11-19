@@ -2,46 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Database Data</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .collapsible-content {
+            display: none;
+            word-break: break-all;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
         }
-        th, td {
-            border: 1px solid #dddddd;
-            text-align: left;
-            padding: 8px;
-        }
-        th {
-            background-color: #f2f2f2;
+        .is-family-monospace {
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    <h2>Database Content</h2>
-
-    <form id="tableForm">
-        <label for="tableName">Table Name:</label>
-        <input type="text" id="tableName" name="tableName" value="langchain_pg_embedding">
-        <button type="submit">Fetch Data</button>
-    </form>
-
-    <div id="data-container"></div>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Database Content</h1>
+            <div id="data-container" class="table-container"></div>
+        </div>
+    </section>
 
     <script>
-        document.getElementById('tableForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const tableName = document.getElementById('tableName').value;
-            fetchData(tableName);
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchData();
         });
 
-        async function fetchData(tableName) {
+        async function fetchData() {
             const container = document.getElementById('data-container');
-            container.innerHTML = 'Loading...';
+            container.innerHTML = '<p class="has-text-centered">Loading...</p>';
             try {
-                const response = await fetch(`/database`);
+                const response = await fetch('/database');
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.detail || 'Failed to fetch data');
@@ -49,7 +45,7 @@
                 const data = await response.json();
                 renderTable(data);
             } catch (error) {
-                container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                container.innerHTML = `<div class="notification is-danger">${error.message}</div>`;
                 console.error('Error fetching data:', error);
             }
         }
@@ -57,14 +53,16 @@
         function renderTable(data) {
             const container = document.getElementById('data-container');
             if (!data || data.length === 0) {
-                container.innerHTML = '<p>No data found.</p>';
+                container.innerHTML = '<p class="has-text-centered">No data found.</p>';
                 return;
             }
 
             const table = document.createElement('table');
+            table.className = 'table is-bordered is-striped is-narrow is-hoverable is-fullwidth';
+            
             const thead = document.createElement('thead');
             const tbody = document.createElement('tbody');
-            const headers = Object.keys(data[0]);
+            const headers = ['cmetadata', 'document']; // Only show these headers
 
             // Header
             const headerRow = document.createElement('tr');
@@ -76,15 +74,38 @@
             thead.appendChild(headerRow);
 
             // Body
-            data.forEach(row => {
+            data.forEach((row, rowIndex) => {
                 const tr = document.createElement('tr');
-                headers.forEach(header => {
+                headers.forEach((header, colIndex) => {
                     const td = document.createElement('td');
-                    // Handle object/JSON data for display
-                    if (typeof row[header] === 'object' && row[header] !== null) {
-                        td.textContent = JSON.stringify(row[header]);
+                    const cellData = row[header];
+
+                    if (header === 'document' && cellData) {
+                        const contentStr = String(cellData);
+                        
+                        const preview = document.createElement('span');
+                        preview.textContent = contentStr.substring(0, 100) + (contentStr.length > 100 ? '...' : '');
+                        
+                        const button = document.createElement('button');
+                        button.className = 'button is-small is-light ml-2';
+                        button.textContent = 'Toggle';
+                        
+                        const fullContent = document.createElement('div');
+                        fullContent.className = 'collapsible-content';
+                        fullContent.textContent = contentStr;
+                        
+                        button.onclick = () => {
+                            fullContent.style.display = fullContent.style.display === 'none' ? 'block' : 'none';
+                        };
+                        
+                        td.appendChild(preview);
+                        td.appendChild(button);
+                        td.appendChild(fullContent);
+
+                    } else if (header === 'cmetadata' && typeof cellData === 'object' && cellData !== null) {
+                        td.innerHTML = `<pre>${JSON.stringify(cellData, null, 2)}</pre>`;
                     } else {
-                        td.textContent = row[header];
+                        td.textContent = cellData;
                     }
                     tr.appendChild(td);
                 });
@@ -96,9 +117,6 @@
             container.innerHTML = '';
             container.appendChild(table);
         }
-
-        // Initial fetch on page load with default value
-        fetchData(document.getElementById('tableName').value);
     </script>
 
 </body>
