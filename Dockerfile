@@ -10,8 +10,5 @@ COPY requirements.txt requirements.txt
 # 安裝相依套件
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 複製專案的其餘部分
-COPY . .
-
 # 執行應用程式
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
