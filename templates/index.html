@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Database Data</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Database Content</h2>
+
+    <form id="tableForm">
+        <label for="tableName">Table Name:</label>
+        <input type="text" id="tableName" name="tableName" value="langchain_pg_embedding">
+        <button type="submit">Fetch Data</button>
+    </form>
+
+    <div id="data-container"></div>
+
+    <script>
+        document.getElementById('tableForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const tableName = document.getElementById('tableName').value;
+            fetchData(tableName);
+        });
+
+        async function fetchData(tableName) {
+            const container = document.getElementById('data-container');
+            container.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(`/database`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to fetch data');
+                }
+                const data = await response.json();
+                renderTable(data);
+            } catch (error) {
+                container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function renderTable(data) {
+            const container = document.getElementById('data-container');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p>No data found.</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            const headers = Object.keys(data[0]);
+
+            // Header
+            const headerRow = document.createElement('tr');
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // Body
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    // Handle object/JSON data for display
+                    if (typeof row[header] === 'object' && row[header] !== null) {
+                        td.textContent = JSON.stringify(row[header]);
+                    } else {
+                        td.textContent = row[header];
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        // Initial fetch on page load with default value
+        fetchData(document.getElementById('tableName').value);
+    </script>
+
+</body>
+</html>
