@@ -33,9 +33,7 @@ def sort_key_for_articles(article_id):
         return (int(article_id), 0)
 
 
-def parse_labor_law_with_chapters(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+def parse_labor_law_with_chapters(content):
 
     chinese_num_map = {
         '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7,
@@ -84,9 +82,8 @@ def parse_labor_law_with_chapters(file_path):
     return result
 
 
-def ingest_data():
-    file_path = 'data/labor_law.txt'
-    parsed_law = parse_labor_law_with_chapters(file_path)
+def ingest_data(content):
+    parsed_law = parse_labor_law_with_chapters(content)
     print(f"Parsed {len(parsed_law)} articles.")
 
     docs = []
@@ -103,7 +100,3 @@ def ingest_data():
 
     vector_store.add_documents(docs)
     print("儲存完成!")
-
-
-if __name__ == "__main__":
-    ingest_data()

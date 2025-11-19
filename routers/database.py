@@ -36,3 +36,21 @@ async def get_all_postgres_data(conn: psycopg2.extensions.connection = Depends(g
     finally:
         if conn:
             conn.close()
+
+@router.delete("/clear", tags=["database"])
+async def clear_langchain_pg_embedding(conn: psycopg2.extensions.connection = Depends(get_db_connection)):
+    try:
+        with conn.cursor() as cursor:
+            query = sql.SQL("TRUNCATE TABLE {}").format(sql.Identifier('langchain_pg_embedding'))
+            cursor.execute(query)
+            conn.commit()
+            return {"message": "Table langchain_pg_embedding cleared successfully."}
+    except psycopg2.Error as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database query error: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()

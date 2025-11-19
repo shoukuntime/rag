@@ -24,14 +24,37 @@
     <section class="section">
         <div class="container">
             <h1 class="title">Database Content</h1>
-            <div id="data-container" class="table-container"></div>
+            <button id="clear-data-btn" class="button is-danger">Clear Data</button>
+            <div id="data-container" class="table-container" style="margin-top: 20px;"></div>
         </div>
     </section>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             fetchData();
+
+            const clearButton = document.getElementById('clear-data-btn');
+            clearButton.addEventListener('click', clearData);
         });
+
+        async function clearData() {
+            if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/database/clear', {
+                        method: 'DELETE',
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Failed to clear data');
+                    }
+                    alert('Data cleared successfully.');
+                    fetchData(); // Refresh the data view
+                } catch (error) {
+                    alert(`Error clearing data: ${error.message}`);
+                    console.error('Error clearing data:', error);
+                }
+            }
+        }
 
         async function fetchData() {
             const container = document.getElementById('data-container');

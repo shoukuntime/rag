@@ -6,5 +6,5 @@ router = APIRouter()
 
 @router.post("")
 def handle_data_ingestion():
-    ingest_data()
+    ingest_data(content)
     return {"message": "Data ingestion started successfully."}
