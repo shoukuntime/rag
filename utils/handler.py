@@ -45,15 +45,16 @@ def parse_labor_law_with_chapters(content):
 
     result = []
 
-    chapter_pattern = re.compile(r'\s*第\s*(\S+)\s*章[^\n]*\n([\s\S]*?)(?=\s*第 \S+ 章|\Z)')
-    article_pattern = re.compile(r'第\s*(\d+(?:-\d+)?)\s*條\n([\s\S]*?)(?=\n\s*第|\Z)')
+    chapter_pattern = re.compile(r'\s*第\s*(\S+)\s*章\s*([^\n]*)\n([\s\S]*?)(?=\s*第 \S+ 章|\Z)')
+    article_pattern = re.compile(r'第\s*(\d+(?:-\d+)?)\s*條\n([\s\S]*?)(?=\n\s*第\s*\d+(?:-\d+)?\s*條|\Z)')
 
     # 更新後的正則表達式，可以捕獲 "第...條" 和 "第...條之一"
     ref_article_pattern = re.compile(r'第([一二三四五六七八九十]+)條(之一)?')
 
     for chapter_match in chapter_pattern.finditer(content):
-        chinese_numeral, chapter_content = chapter_match.groups()
+        chinese_numeral, chapter_name, chapter_content = chapter_match.groups()
         chapter_number = chinese_num_map.get(chinese_numeral, 0)
+        chapter_name = chapter_name.strip()
 
         article_matches = article_pattern.findall(chapter_content)
 
@@ -72,7 +73,7 @@ def parse_labor_law_with_chapters(content):
                     referenced_articles.add(article_ref_str)
 
             result.append([
-                str(chapter_number),
+                [chapter_number, chapter_name],
                 article_number,
                 cleaned_content,
                 # 使用新的排序鍵進行排序
@@ -89,9 +90,10 @@ def ingest_data(content):
     docs = []
     for chapter, article_num, content, refs in parsed_law:
         metadata = {
+            "source": "labor_law",
             "chapter": chapter,
             "article": article_num,
-            "references": ", ".join(refs)
+            "references": refs
         }
         doc = Document(page_content=content, metadata=metadata)
         docs.append(doc)
