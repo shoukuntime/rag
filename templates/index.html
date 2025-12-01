@@ -37,6 +37,11 @@
             display: none; /* Hidden by default */
             margin: 2rem auto;
         }
+        .content pre {
+            white-space: pre-wrap;
+            background-color: transparent;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -59,6 +64,13 @@
             </div>
 
             <div class="field">
+                <label class="label" for="custom-question-input">Or Enter Your Own Question</label>
+                <div class="control">
+                    <textarea id="custom-question-input" class="textarea" placeholder="e.g., What is the rule for overtime pay?"></textarea>
+                </div>
+            </div>
+
+            <div class="field">
                 <div class="control">
                     <button id="compare-btn" class="button is-primary" disabled>Compare Answers</button>
                 </div>
@@ -73,7 +85,7 @@
                             <p class="card-header-title">Original Answer</p>
                         </header>
                         <div class="card-content">
-                            <div id="original-answer" class="content"></div>
+                            <div id="original-answer" class="content scrollable-content"></div>
                         </div>
                     </div>
                 </div>
@@ -83,7 +95,14 @@
                             <p class="card-header-title">RAG System Answer (/query)</p>
                         </header>
                         <div class="card-content">
-                            <div id="rag-answer" class="content"></div>
+                            <div class="content">
+                                <strong>Answer:</strong>
+                                <div id="rag-answer-text" class="scrollable-content"></div>
+                            </div>
+                            <div class="content">
+                                <strong>Hit References:</strong>
+                                <div id="rag-references" class="scrollable-content"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -93,7 +112,14 @@
                             <p class="card-header-title">ASK Answer (/query/ask)</p>
                         </header>
                         <div class="card-content">
-                            <div id="ask-answer" class="content"></div>
+                            <div class="content">
+                                <strong>Answer:</strong>
+                                <div id="ask-answer-text" class="scrollable-content"></div>
+                            </div>
+                            <div class="content">
+                                <strong>Hit References:</strong>
+                                <div id="ask-references" class="scrollable-content"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -122,13 +148,40 @@
             fetchData();
             document.getElementById('clear-data-btn').addEventListener('click', clearData);
             document.getElementById('compare-btn').addEventListener('click', handleCompareClick);
+
+            const customQuestionInput = document.getElementById('custom-question-input');
+            const qaSelect = document.getElementById('qa-select');
+
+            customQuestionInput.addEventListener('input', () => {
+                if (customQuestionInput.value.trim() !== '') {
+                    qaSelect.value = ''; // Clear dropdown selection
+                }
+                toggleCompareButton();
+            });
+
+            qaSelect.addEventListener('change', () => {
+                if (qaSelect.value !== '') {
+                    customQuestionInput.value = ''; // Clear textarea
+                }
+                toggleCompareButton();
+            });
         });
 
         // --- Functions for Comparison Tool ---
 
+        function toggleCompareButton() {
+            const qaSelect = document.getElementById('qa-select');
+            const customQuestionInput = document.getElementById('custom-question-input');
+            const compareBtn = document.getElementById('compare-btn');
+
+            const isQaSelected = qaSelect.value !== '' && qaSelect.value !== null;
+            const isCustomQuestionEntered = customQuestionInput.value.trim() !== '';
+
+            compareBtn.disabled = !isQaSelected && !isCustomQuestionEntered;
+        }
+
         function populateQaDropdown(qaData) {
             const qaSelect = document.getElementById('qa-select');
-            const compareBtn = document.getElementById('compare-btn');
 
             if (!qaData || qaData.length === 0) {
                 qaSelect.innerHTML = '<option>No Q&A data found</option>';
@@ -143,14 +196,27 @@
                 qaSelect.appendChild(option);
             });
             qaSelect.disabled = false;
-            compareBtn.disabled = false;
         }
 
         async function handleCompareClick() {
             const qaSelect = document.getElementById('qa-select');
+            const customQuestionInput = document.getElementById('custom-question-input');
+            
+            let question = '';
+            let originalAnswer = '';
+
+            const customQuestionValue = customQuestionInput.value.trim();
             const selectedIndex = qaSelect.value;
-            if (selectedIndex === '') {
-                alert('Please select a question first.');
+
+            if (customQuestionValue !== '') {
+                question = customQuestionValue;
+                originalAnswer = 'N/A for custom questions.';
+            } else if (selectedIndex !== '') {
+                const selectedQa = fullQaData[selectedIndex];
+                question = selectedQa.document;
+                originalAnswer = selectedQa.cmetadata.answer;
+            } else {
+                alert('Please select a question or enter your own.');
                 return;
             }
 
@@ -158,16 +224,21 @@
             const loadingSpinner = document.getElementById('comparison-loading-spinner');
             const resultsContainer = document.getElementById('results-container');
             const originalAnswerDiv = document.getElementById('original-answer');
-            const ragAnswerDiv = document.getElementById('rag-answer');
-            const askAnswerDiv = document.getElementById('ask-answer');
-
-            const selectedQa = fullQaData[selectedIndex];
-            const question = selectedQa.document;
-            const originalAnswer = selectedQa.cmetadata.answer;
+            const ragAnswerTextDiv = document.getElementById('rag-answer-text');
+            const ragReferencesDiv = document.getElementById('rag-references');
+            const askAnswerTextDiv = document.getElementById('ask-answer-text');
+            const askReferencesDiv = document.getElementById('ask-references');
 
             loadingSpinner.style.display = 'block';
             resultsContainer.style.display = 'none';
             compareBtn.classList.add('is-loading');
+
+            // Clear previous results
+            originalAnswerDiv.textContent = '';
+            ragAnswerTextDiv.textContent = '';
+            ragReferencesDiv.innerHTML = '';
+            askAnswerTextDiv.textContent = '';
+            askReferencesDiv.innerHTML = '';
 
             try {
                 // Define API call promises to run in parallel
@@ -192,8 +263,23 @@
 
                 // Display all three results
                 originalAnswerDiv.textContent = originalAnswer;
-                ragAnswerDiv.textContent = ragResult.response.answer;
-                askAnswerDiv.textContent = askResult.response.answer; // Correctly access the 'answer' property
+
+                // RAG Answer
+                ragAnswerTextDiv.textContent = ragResult.response.answer;
+                if (ragResult.response.hit_references && ragResult.response.hit_references.length > 0) {
+                    ragReferencesDiv.innerHTML = `<pre>${JSON.stringify(ragResult.response.hit_references, null, 2)}</pre>`;
+                } else {
+                    ragReferencesDiv.textContent = 'No references found.';
+                }
+
+                // ASK Answer
+                askAnswerTextDiv.textContent = askResult.response.answer;
+                if (askResult.response.hit_references && askResult.response.hit_references.length > 0) {
+                    askReferencesDiv.innerHTML = `<pre>${JSON.stringify(askResult.response.hit_references, null, 2)}</pre>`;
+                } else {
+                    askReferencesDiv.textContent = 'No references found.';
+                }
+
                 resultsContainer.style.display = 'flex';
 
             } catch (error) {
