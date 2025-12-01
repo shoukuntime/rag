@@ -28,7 +28,9 @@ def get_rag_result(question: str, top_k: int = 5) -> dict:
     docs_with_scores = vector_store.similarity_search_with_score(question, k=top_k)
 
     docs = [doc for doc, score in docs_with_scores]
-    context = "\n\n".join(doc.page_content for doc in docs)
+    context = "\n\n".join(
+        f"Source:\n{doc.metadata}\n\nContent:\n{doc.page_content}" for doc in docs
+    )
     references = [{"page_content": doc.page_content, "metadata": doc.metadata, "score": score} for doc, score in docs_with_scores]
 
     llm_response = llm_chain.invoke({
