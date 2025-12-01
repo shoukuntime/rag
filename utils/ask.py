@@ -31,4 +31,5 @@ def get_ask_result(question: str) -> dict:
     return {
         "question": question,
         "answer": llm_response["answer"],
+        "hit_references": llm_response["hit_references"],
     }

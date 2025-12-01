@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, HTTPException
 import pdfplumber
 from utils.qa_handler import ingest_qa_data
 from utils import vector_store
@@ -32,7 +32,7 @@ def get_all_qa():
         return qa_list
     except Exception as e:
         # 這裡可以加入更詳細的日誌記錄
-        return {"error": f"Failed to retrieve QA data: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve QA data: {str(e)}")
 
 
 @router.post("")
@@ -46,9 +46,9 @@ def handle_qa_data_ingestion(file: UploadFile = File(...)):
         text = text.strip()
         
         if not text:
-            return {"message": "The provided PDF is empty or could not be read."}
+            raise HTTPException(status_code=400, detail="The provided PDF is empty or could not be read.")
 
         ingest_qa_data(text)
         return {"message": "QA data ingestion started successfully."}
     except Exception as e:
-        return {"message": f"An error occurred: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

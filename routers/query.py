@@ -14,5 +14,4 @@ def query_labor_law(request: QueryRequest):
 @router.post("/ask")
 def ask_question(question: str):
     result = get_ask_result(question)
-    # Revert to original structure to be consistent with the other endpoint
     return {"response": result}

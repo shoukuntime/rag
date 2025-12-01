@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Data Viewer & Answer Comparison</title>
+    <title>RAG 應用程式</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         .scrollable-content {
             max-height: 200px;
@@ -15,15 +16,12 @@
             border-radius: 4px;
             margin-top: 5px;
         }
-        .is-family-monospace {
-            font-family: monospace;
-        }
         .container {
             margin-top: 20px;
         }
         .result-card {
             margin-top: 1.5rem;
-            height: 100%; /* Make cards in a row equal height */
+            height: 100%;
             display: flex;
             flex-direction: column;
         }
@@ -34,193 +32,451 @@
             white-space: pre-wrap;
         }
         #comparison-loading-spinner {
-            display: none; /* Hidden by default */
+            display: none;
             margin: 2rem auto;
+        }
+        .content pre {
+            white-space: pre-wrap;
+            background-color: transparent;
+            padding: 0;
+        }
+        .tab-content {
+            padding-top: 20px;
         }
     </style>
 </head>
 <body>
-
-    <!-- Section for RAG Answer Comparison -->
     <section class="section">
         <div class="container">
-            <h1 class="title">RAG & ASK Answer Comparison</h1>
-            <p class="subtitle">Compare the Original Answer with the RAG System Answer and the ASK LLM Answer.</p>
+            <!-- Tabs for navigation -->
+            <div class="tabs is-boxed">
+                <ul id="main-tabs">
+                    <li class="is-active" data-tab="qa-tab"><a><span class="icon is-small"><i class="fas fa-question-circle"></i></span><span>開始問答</span></a></li>
+                    <li data-tab="import-tab"><a><span class="icon is-small"><i class="fas fa-upload"></i></span><span>匯入與說明</span></a></li>
+                    <li data-tab="db-tab"><a><span class="icon is-small"><i class="fas fa-database"></i></span><span>資料庫內容</span></a></li>
+                </ul>
+            </div>
 
-            <div class="field">
-                <label class="label" for="qa-select">Select a Question from Labor Law Q&A</label>
-                <div class="control">
-                    <div class="select is-fullwidth">
-                        <select id="qa-select" disabled>
-                            <option>Loading questions...</option>
-                        </select>
+            <!-- Q&A Tab -->
+            <div id="qa-tab" class="tab-content">
+                <h1 class="title">RAG 與 ASK 答案比較</h1>
+                <p class="subtitle">比較原始答案、RAG 系統答案以及 ASK LLM 答案。</p>
+
+                <div class="field">
+                    <label class="label" for="qa-select">從勞動法問答中選擇一個問題</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="qa-select" disabled>
+                                <option>載入問題中...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label" for="custom-question-input">或輸入您自己的問題</label>
+                    <div class="control">
+                        <textarea id="custom-question-input" class="textarea" placeholder="例如：加班費的規定是什麼？"></textarea>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <button id="compare-btn" class="button is-primary" disabled>比較答案</button>
+                    </div>
+                </div>
+                
+                <div id="comparison-loading-spinner" class="loader is-loading"></div>
+
+                <div id="results-container" class="columns is-desktop" style="display: none;">
+                    <!-- Results columns will be the same as before -->
+                    <div class="column">
+                        <div class="card result-card">
+                            <header class="card-header"><p class="card-header-title">原始答案</p></header>
+                            <div class="card-content"><div id="original-answer" class="content scrollable-content"></div></div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="card result-card">
+                            <header class="card-header"><p class="card-header-title">RAG 系統答案 (/query)</p></header>
+                            <div class="card-content">
+                                <div class="content"><strong>答案：</strong><div id="rag-answer-text" class="scrollable-content"></div></div>
+                                <div class="content"><strong>參考資料：</strong><div id="rag-references" class="scrollable-content"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="card result-card">
+                            <header class="card-header"><p class="card-header-title">ASK 答案 (/query/ask)</p></header>
+                            <div class="card-content">
+                                <div class="content"><strong>答案：</strong><div id="ask-answer-text" class="scrollable-content"></div></div>
+                                <div class="content"><strong>參考資料：</strong><div id="ask-references" class="scrollable-content"></div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="field">
-                <div class="control">
-                    <button id="compare-btn" class="button is-primary" disabled>Compare Answers</button>
+            <!-- Import & Instructions Tab -->
+            <div id="import-tab" class="tab-content" style="display: none;">
+                <div class="columns">
+                    <div class="column is-half">
+                        <h1 class="title">匯入資料</h1>
+
+                        <!-- Card for Labor Law Import -->
+                        <div class="card">
+                            <header class="card-header">
+                                <p class="card-header-title">匯入勞基法</p>
+                            </header>
+                            <div class="card-content">
+                                <div class="field">
+                                    <div class="file has-name is-fullwidth">
+                                        <label class="file-label">
+                                            <input class="file-input" type="file" id="law-file-upload">
+                                            <span class="file-cta">
+                                                <span class="file-icon"><i class="fas fa-file-pdf"></i></span>
+                                                <span class="file-label">選擇勞基法 PDF…</span>
+                                            </span>
+                                            <span id="law-file-name-display" class="file-name">未選擇任何檔案</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <button id="law-upload-btn" class="button is-info">上傳勞基法</button>
+                                </div>
+                                <div id="law-upload-status" class="notification" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <br>
+
+                        <!-- Card for QA Import -->
+                        <div class="card">
+                            <header class="card-header">
+                                <p class="card-header-title">匯入問答集</p>
+                            </header>
+                            <div class="card-content">
+                                <div class="field">
+                                    <div class="file has-name is-fullwidth">
+                                        <label class="file-label">
+                                            <input class="file-input" type="file" id="qa-file-upload">
+                                            <span class="file-cta">
+                                                <span class="file-icon"><i class="fas fa-file-alt"></i></span>
+                                                <span class="file-label">選擇問答集檔案…</span>
+                                            </span>
+                                            <span id="qa-file-name-display" class="file-name">未選擇任何檔案</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <button id="qa-upload-btn" class="button is-primary">上傳問答集</button>
+                                </div>
+                                <div id="qa-upload-status" class="notification" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-half">
+                        <h1 class="title">使用說明</h1>
+                        <div class="content">
+                            <p>請依照下列步驟匯入資料，然後至「開始問答」頁面進行查詢。</p>
+                            <ol>
+                                <li>
+                                    <strong>匯入勞基法:</strong>
+                                    請至 <a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCode=N0030001" target="_blank">全國法規資料庫</a>，選擇「下載」並下載 .pdf 檔格式，然後透過左方「匯入勞基法」功能上傳。
+                                </li>
+                                <li>
+                                    <strong>匯入問答集:</strong>
+                                    請至 <a href="https://ilabor.ntpc.gov.tw/page/new-labor-standard-law-qa" target="_blank">新北市勞動雲-新勞基法QA</a>，將網頁上的問答內容下載 .pdf 檔格式，然後透過左方「匯入問答集」功能上傳。
+                                </li>
+                                <li>
+                                    <strong>開始問答:</strong>
+                                    成功匯入所需檔案後，切換至「開始問答」頁面，即可開始使用問答功能。
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div id="comparison-loading-spinner" class="loader is-loading"></div>
 
-            <div id="results-container" class="columns is-desktop" style="display: none;">
-                <div class="column">
-                    <div class="card result-card">
-                        <header class="card-header">
-                            <p class="card-header-title">Original Answer</p>
-                        </header>
-                        <div class="card-content">
-                            <div id="original-answer" class="content"></div>
+            <!-- Database Content Tab -->
+            <div id="db-tab" class="tab-content" style="display: none;">
+                <h1 class="title">資料庫內容</h1>
+                <div class="level">
+                    <div class="level-left">
+                        <div class="tabs" id="data-source-tabs">
+                            <ul>
+                                <li class="is-active" data-tab="labor-law-container"><a>勞動法</a></li>
+                                <li data-tab="labor-law-qa-container"><a>勞動法問答</a></li>
+                            </ul>
                         </div>
                     </div>
-                </div>
-                <div class="column">
-                    <div class="card result-card">
-                        <header class="card-header">
-                            <p class="card-header-title">RAG System Answer (/query)</p>
-                        </header>
-                        <div class="card-content">
-                            <div id="rag-answer" class="content"></div>
-                        </div>
+                    <div class="level-right">
+                        <p class="level-item">
+                            <button id="clear-data-btn" class="button is-danger">清除所有資料</button>
+                        </p>
                     </div>
                 </div>
-                <div class="column">
-                    <div class="card result-card">
-                        <header class="card-header">
-                            <p class="card-header-title">ASK Answer (/query/ask)</p>
-                        </header>
-                        <div class="card-content">
-                            <div id="ask-answer" class="content"></div>
-                        </div>
-                    </div>
-                </div>
+                
+                <div id="labor-law-container" class="content-tab-db"></div>
+                <div id="labor-law-qa-container" class="content-tab-db" style="display: none;"></div>
             </div>
-        </div>
-    </section>
-
-    <hr>
-
-    <!-- Section for Original Database Content -->
-    <section class="section">
-        <div class="container">
-            <h1 class="title">Database Content</h1>
-            <button id="clear-data-btn" class="button is-danger">Clear Data</button>
-            
-            <div id="labor-law-container" class="container"></div>
-            <div id="labor-law-qa-container" class="container"></div>
         </div>
     </section>
 
     <script>
-        // Store QA data globally for both functions to access
+        // Global state
         let fullQaData = [];
+        let fullLaborLawData = [];
+        let laborLawCurrentPage = 1;
+        let qaCurrentPage = 1;
 
         document.addEventListener('DOMContentLoaded', function() {
+            // --- Initial Setup ---
             fetchData();
-            document.getElementById('clear-data-btn').addEventListener('click', clearData);
-            document.getElementById('compare-btn').addEventListener('click', handleCompareClick);
+            setupEventListeners();
         });
 
-        // --- Functions for Comparison Tool ---
+        function setupEventListeners() {
+            // Main tab switching
+            document.getElementById('main-tabs').addEventListener('click', (event) => {
+                const clickedTab = event.target.closest('li');
+                if (!clickedTab) return;
 
-        function populateQaDropdown(qaData) {
+                document.querySelectorAll('#main-tabs li').forEach(tab => tab.classList.remove('is-active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+
+                clickedTab.classList.add('is-active');
+                const tabName = clickedTab.dataset.tab;
+                document.getElementById(tabName).style.display = 'block';
+            });
+
+            // Q&A tab listeners
+            document.getElementById('compare-btn').addEventListener('click', handleCompareClick);
+            const customQuestionInput = document.getElementById('custom-question-input');
             const qaSelect = document.getElementById('qa-select');
-            const compareBtn = document.getElementById('compare-btn');
+            customQuestionInput.addEventListener('input', () => {
+                if (customQuestionInput.value.trim() !== '') qaSelect.value = '';
+                toggleCompareButton();
+            });
+            qaSelect.addEventListener('change', () => {
+                if (qaSelect.value !== '') customQuestionInput.value = '';
+                toggleCompareButton();
+            });
 
-            if (!qaData || qaData.length === 0) {
-                qaSelect.innerHTML = '<option>No Q&A data found</option>';
+            // Import tab listeners
+            const lawFileInput = document.getElementById('law-file-upload');
+            const lawFileNameDisplay = document.getElementById('law-file-name-display');
+            lawFileInput.addEventListener('change', () => {
+                lawFileNameDisplay.textContent = lawFileInput.files.length > 0 ? lawFileInput.files[0].name : '未選擇任何檔案';
+            });
+            document.getElementById('law-upload-btn').addEventListener('click', handleLawFileUpload);
+
+            const qaFileInput = document.getElementById('qa-file-upload');
+            const qaFileNameDisplay = document.getElementById('qa-file-name-display');
+            qaFileInput.addEventListener('change', () => {
+                qaFileNameDisplay.textContent = qaFileInput.files.length > 0 ? qaFileInput.files[0].name : '未選擇任何檔案';
+            });
+            document.getElementById('qa-upload-btn').addEventListener('click', handleQaFileUpload);
+
+
+            // DB tab listeners
+            document.getElementById('clear-data-btn').addEventListener('click', clearData);
+            document.getElementById('data-source-tabs').addEventListener('click', (event) => {
+                const clickedTab = event.target.closest('li');
+                if (!clickedTab) return;
+
+                document.querySelectorAll('#data-source-tabs li').forEach(tab => tab.classList.remove('is-active'));
+                document.querySelectorAll('.content-tab-db').forEach(content => content.style.display = 'none');
+
+                clickedTab.classList.add('is-active');
+                const tabName = clickedTab.dataset.tab;
+                document.getElementById(tabName).style.display = 'block';
+            });
+        }
+        
+        // --- Functions for Import Tab ---
+        async function handleLawFileUpload() {
+            const fileInput = document.getElementById('law-file-upload');
+            const uploadBtn = document.getElementById('law-upload-btn');
+            const uploadStatus = document.getElementById('law-upload-status');
+
+            if (fileInput.files.length === 0) {
+                alert('請先選擇要上傳的勞基法檔案。');
                 return;
             }
 
-            qaSelect.innerHTML = '<option value="" disabled selected>-- Please choose a question --</option>';
+            const formData = new FormData();
+            formData.append('files', fileInput.files[0]);
+
+            uploadBtn.classList.add('is-loading');
+            uploadStatus.style.display = 'none';
+
+            try {
+                const response = await fetch('/handle', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || '上傳失敗');
+                }
+                
+                uploadStatus.className = 'notification is-success';
+                uploadStatus.textContent = `成功：${result.message}。頁面將重新載入資料。`;
+                uploadStatus.style.display = 'block';
+
+                fetchData();
+
+            } catch (error) {
+                uploadStatus.className = 'notification is-danger';
+                uploadStatus.textContent = `錯誤： ${error.message}`;
+                uploadStatus.style.display = 'block';
+                console.error('上傳勞基法檔案時發生錯誤:', error);
+            } finally {
+                uploadBtn.classList.remove('is-loading');
+            }
+        }
+
+        async function handleQaFileUpload() {
+            const fileInput = document.getElementById('qa-file-upload');
+            const uploadBtn = document.getElementById('qa-upload-btn');
+            const uploadStatus = document.getElementById('qa-upload-status');
+
+            if (fileInput.files.length === 0) {
+                alert('請先選擇要上傳的問答集檔案。');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('files', fileInput.files[0]);
+
+            uploadBtn.classList.add('is-loading');
+            uploadStatus.style.display = 'none';
+
+            try {
+                const response = await fetch('/qa', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || '上傳失敗');
+                }
+                
+                uploadStatus.className = 'notification is-success';
+                uploadStatus.textContent = `成功：${result.message}。頁面將重新載入資料。`;
+                uploadStatus.style.display = 'block';
+
+                fetchData();
+
+            } catch (error) {
+                uploadStatus.className = 'notification is-danger';
+                uploadStatus.textContent = `錯誤： ${error.message}`;
+                uploadStatus.style.display = 'block';
+                console.error('上傳問答集檔案時發生錯誤:', error);
+            } finally {
+                uploadBtn.classList.remove('is-loading');
+            }
+        }
+
+
+        // --- Functions for Q&A Tab ---
+        function toggleCompareButton() {
+            const isQaSelected = document.getElementById('qa-select').value !== '';
+            const isCustomQuestionEntered = document.getElementById('custom-question-input').value.trim() !== '';
+            document.getElementById('compare-btn').disabled = !isQaSelected && !isCustomQuestionEntered;
+        }
+
+        function populateQaDropdown(qaData) {
+            const qaSelect = document.getElementById('qa-select');
+            if (!qaData || qaData.length === 0) {
+                qaSelect.innerHTML = '<option value="">找不到問答資料，請先匯入</option>';
+                qaSelect.disabled = true;
+                return;
+            }
+            qaSelect.innerHTML = '<option value="" disabled selected>-- 請選擇一個問題 --</option>';
             qaData.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
-                option.textContent = item.document; // 'document' holds the question
+                option.textContent = item.document;
                 qaSelect.appendChild(option);
             });
             qaSelect.disabled = false;
-            compareBtn.disabled = false;
         }
 
         async function handleCompareClick() {
             const qaSelect = document.getElementById('qa-select');
-            const selectedIndex = qaSelect.value;
-            if (selectedIndex === '') {
-                alert('Please select a question first.');
+            const customQuestionInput = document.getElementById('custom-question-input');
+            let question = '';
+            let originalAnswer = '不適用於自訂問題。';
+
+            if (customQuestionInput.value.trim() !== '') {
+                question = customQuestionInput.value.trim();
+            } else if (qaSelect.value !== '') {
+                const selectedQa = fullQaData[qaSelect.value];
+                question = selectedQa.document;
+                originalAnswer = selectedQa.cmetadata.answer;
+            } else {
                 return;
             }
 
             const compareBtn = document.getElementById('compare-btn');
             const loadingSpinner = document.getElementById('comparison-loading-spinner');
             const resultsContainer = document.getElementById('results-container');
-            const originalAnswerDiv = document.getElementById('original-answer');
-            const ragAnswerDiv = document.getElementById('rag-answer');
-            const askAnswerDiv = document.getElementById('ask-answer');
-
-            const selectedQa = fullQaData[selectedIndex];
-            const question = selectedQa.document;
-            const originalAnswer = selectedQa.cmetadata.answer;
-
+            
             loadingSpinner.style.display = 'block';
             resultsContainer.style.display = 'none';
             compareBtn.classList.add('is-loading');
 
+            document.getElementById('original-answer').textContent = '';
+            document.getElementById('rag-answer-text').textContent = '';
+            document.getElementById('rag-references').innerHTML = '';
+            document.getElementById('ask-answer-text').textContent = '';
+            document.getElementById('ask-references').innerHTML = '';
+
             try {
-                // Define API call promises to run in parallel
                 const ragPromise = fetch('/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: question, top_k: 5 })
-                }).then(res => {
-                    if (!res.ok) return res.json().then(err => Promise.reject(err.detail || 'RAG query failed'));
-                    return res.json();
-                });
+                }).then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err.detail)));
 
                 const askPromise = fetch(`/query/ask?question=${encodeURIComponent(question)}`, {
                     method: 'POST'
-                }).then(res => {
-                    if (!res.ok) return res.json().then(err => Promise.reject(err.detail || 'ASK query failed'));
-                    return res.json();
-                });
+                }).then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err.detail)));
 
-                // Wait for both API calls to complete
                 const [ragResult, askResult] = await Promise.all([ragPromise, askPromise]);
 
-                // Display all three results
-                originalAnswerDiv.textContent = originalAnswer;
-                ragAnswerDiv.textContent = ragResult.response.answer;
-                askAnswerDiv.textContent = askResult.response.answer; // Correctly access the 'answer' property
+                document.getElementById('original-answer').textContent = originalAnswer;
+                document.getElementById('rag-answer-text').textContent = ragResult.response.answer;
+                document.getElementById('rag-references').innerHTML = `<pre>${JSON.stringify(ragResult.response.hit_references, null, 2)}</pre>`;
+                document.getElementById('ask-answer-text').textContent = askResult.response.answer;
+                document.getElementById('ask-references').innerHTML = `<pre>${JSON.stringify(askResult.response.hit_references, null, 2)}</pre>`;
+                
                 resultsContainer.style.display = 'flex';
 
             } catch (error) {
-                console.error('Error comparing answers:', error);
-                alert('An error occurred during comparison: ' + error);
+                alert('比較過程中發生錯誤：' + error);
             } finally {
                 loadingSpinner.style.display = 'none';
                 compareBtn.classList.remove('is-loading');
             }
         }
 
-
-        // --- Original Functions for Data Tables ---
-
+        // --- Functions for DB Tab ---
         async function clearData() {
             if (confirm('您確定要清除所有資料嗎？此操作無法撤銷。')) {
                 try {
                     const response = await fetch('/database/clear', { method: 'DELETE' });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.detail || 'Failed to clear data');
-                    }
-                    alert('Data cleared successfully.');
+                    if (!response.ok) throw new Error((await response.json()).detail);
+                    alert('資料清除成功。');
                     fetchData();
                 } catch (error) {
-                    alert(`Error clearing data: ${error.message}`);
-                    console.error('Error clearing data:', error);
+                    alert(`清除資料時發生錯誤： ${error.message}`);
                 }
             }
         }
@@ -228,67 +484,61 @@
         async function fetchData() {
             const laborLawContainer = document.getElementById('labor-law-container');
             const laborLawQaContainer = document.getElementById('labor-law-qa-container');
-            laborLawContainer.innerHTML = '<p class="has-text-centered">Loading Labor Law Data...</p>';
-            laborLawQaContainer.innerHTML = '<p class="has-text-centered">Loading Q&A Data...</p>';
+            laborLawContainer.innerHTML = '<p class="has-text-centered">載入中...</p>';
+            laborLawQaContainer.innerHTML = '<p class="has-text-centered">載入中...</p>';
 
             try {
                 const response = await fetch('/database');
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to fetch data');
-                }
+                if (!response.ok) throw new Error((await response.json()).detail);
                 const data = await response.json();
                 
-                const laborLawData = data.filter(item => item.cmetadata.source === 'labor_law');
-                const laborLawQaData = data.filter(item => item.cmetadata.source === 'labor_law_qa');
+                fullLaborLawData = data.filter(item => item.cmetadata.source === 'labor_law');
+                fullQaData = data.filter(item => item.cmetadata.source === 'labor_law_qa');
 
-                fullQaData = laborLawQaData;
                 populateQaDropdown(fullQaData);
-                renderData(laborLawData, fullQaData);
+                toggleCompareButton();
+                
+                laborLawCurrentPage = 1;
+                qaCurrentPage = 1;
+                renderAllTables();
 
             } catch (error) {
-                laborLawContainer.innerHTML = `<div class="notification is-danger">${error.message}</div>`;
-                laborLawQaContainer.innerHTML = '';
-                console.error('Error fetching data:', error);
+                const errorMsg = `<div class="notification is-danger">${error.message}</div>`;
+                laborLawContainer.innerHTML = errorMsg;
+                laborLawQaContainer.innerHTML = errorMsg;
             }
         }
 
-        function renderData(laborLawData, laborLawQaData) {
-            renderTable('labor-law-container', 'Labor Law', laborLawData, ['article', 'chapter', 'references', 'document'], { 'document': '條文內容' });
-            renderTable('labor-law-qa-container', 'Labor Law Q&A', laborLawQaData, ['document', 'answer', 'references'], { 'document': '問題' });
+        function renderAllTables() {
+            renderTable('labor-law-container', '勞動法', fullLaborLawData, ['article', 'chapter', 'references', 'document'], { 'document': '條文內容', 'article': '條', 'chapter': '章', 'references': '參考' }, 'laborLaw');
+            renderTable('labor-law-qa-container', '勞動法問答', fullQaData, ['document', 'answer', 'references'], { 'document': '問題', 'answer': '答案', 'references': '參考' }, 'qa');
         }
 
-        function renderTable(containerId, title, data, headers, header_rename) {
+        function renderTable(containerId, title, data, headers, header_rename, stateKey) {
             const container = document.getElementById(containerId);
             if (!data || data.length === 0) {
-                container.innerHTML = `<h2 class="title is-4">${title}</h2><p class="has-text-centered">No data found.</p>`;
+                container.innerHTML = `<p class="has-text-centered">找不到資料。請至「匯入與說明」頁面上傳。</p>`;
                 return;
             }
+
+            const currentPage = stateKey === 'laborLaw' ? laborLawCurrentPage : qaCurrentPage;
+            const rowsPerPage = 10;
+            const totalPages = Math.ceil(data.length / rowsPerPage);
+            const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
             const table = document.createElement('table');
             table.className = 'table is-bordered is-striped is-narrow is-hoverable is-fullwidth';
             
-            const thead = document.createElement('thead');
+            table.innerHTML = `<thead><tr>${headers.map(h => `<th>${header_rename[h] || h}</th>`).join('')}</tr></thead>`;
+            
             const tbody = document.createElement('tbody');
-            const headerRow = document.createElement('tr');
-            headers.forEach(headerText => {
-                const th = document.createElement('th');
-                th.textContent = header_rename[headerText] || headerText;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-
-            data.forEach(row => {
+            paginatedData.forEach(row => {
                 const tr = document.createElement('tr');
                 headers.forEach(header => {
                     const td = document.createElement('td');
                     let cellData = (header === 'document') ? row.document : row.cmetadata[header];
-
                     if (typeof cellData === 'string' && cellData.length > 100) {
-                        const contentDiv = document.createElement('div');
-                        contentDiv.className = 'scrollable-content';
-                        contentDiv.textContent = cellData;
-                        td.appendChild(contentDiv);
+                        td.innerHTML = `<div class="scrollable-content">${cellData}</div>`;
                     } else if (Array.isArray(cellData)) {
                         td.innerHTML = `<pre>${JSON.stringify(cellData, null, 2)}</pre>`;
                     } else {
@@ -298,13 +548,30 @@
                 });
                 tbody.appendChild(tr);
             });
-
-            table.appendChild(thead);
             table.appendChild(tbody);
-            container.innerHTML = `<h2 class="title is-4">${title}</h2>`;
+
+            let paginationHtml = '';
+            if (totalPages > 1) {
+                let lis = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    lis += `<li><a class="pagination-link ${i === currentPage ? 'is-current' : ''}" data-page="${i}" data-state="${stateKey}">${i}</a></li>`;
+                }
+                paginationHtml = `<nav class="pagination is-centered"><ul class="pagination-list">${lis}</ul></nav>`;
+            }
+
+            container.innerHTML = '';
             container.appendChild(table);
+            container.insertAdjacentHTML('beforeend', paginationHtml);
+
+            container.querySelectorAll('.pagination-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const newPage = parseInt(e.target.dataset.page);
+                    if (e.target.dataset.state === 'laborLaw') laborLawCurrentPage = newPage;
+                    else qaCurrentPage = newPage;
+                    renderAllTables();
+                });
+            });
         }
     </script>
-
 </body>
 </html>

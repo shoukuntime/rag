@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 class QueryRequest(BaseModel):
     question: str
@@ -7,3 +7,4 @@ class QueryRequest(BaseModel):
 
 class Answer(BaseModel):
     answer: str = Field(description="問題的答案。")
+    hit_references: List[Dict[str, Any]] = Field(description="生成答案所引用的相關參考資料。")
