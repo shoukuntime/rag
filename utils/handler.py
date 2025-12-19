@@ -102,3 +102,51 @@ def ingest_data(content):
 
     vector_store.add_documents(docs)
     print("儲存完成!")
+
+
+def parse_qa_data(content: str):
+    """
+    解析QA格式的文本，提取問題、答案和參考法條。
+    """
+    qa_pattern = re.compile(r'Q：(.*?)\nA：([\s\S]*?)(?=\nQ：|\Z)', re.MULTILINE)
+    ref_article_pattern = re.compile(r'第([一二三四五六七八九十]+)條(之一)?')
+
+    docs = []
+    for match in qa_pattern.finditer(content):
+        question, answer = match.groups()
+        question = question.strip()
+        answer = answer.strip()
+
+        referenced_articles = set()
+        for ref_match in ref_article_pattern.finditer(answer):
+            cn_num, sub_part = ref_match.groups()
+            num = chinese_to_int(cn_num)
+            if num > 0:
+                article_ref_str = str(num)
+                if sub_part:
+                    article_ref_str += "-1"
+                referenced_articles.add(article_ref_str)
+
+        metadata = {
+            "source": "labor_law_qa",
+            "answer": answer,
+            "references": sorted(list(referenced_articles), key=sort_key_for_articles)
+        }
+        doc = Document(page_content=question, metadata=metadata)
+        docs.append(doc)
+
+    return docs
+
+
+def ingest_qa_data(content: str):
+    """
+    處理QA數據的攝取流程。
+    """
+    docs = parse_qa_data(content)
+    print(f"Parsed {len(docs)} Q&A items.")
+
+    if docs:
+        vector_store.add_documents(docs)
+        print("QA data ingestion complete!")
+    else:
+        print("No Q&A items found to ingest.")

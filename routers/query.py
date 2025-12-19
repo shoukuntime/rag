@@ -6,7 +6,7 @@ from utils.ask import get_ask_result
 
 router = APIRouter()
 
-@router.post("")
+@router.post("/rag")
 def query_labor_law(request: QueryRequest):
     result = get_rag_result(request.question, top_k=request.top_k)
     return {"response": result}

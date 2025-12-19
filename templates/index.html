@@ -159,10 +159,10 @@
                                 <div class="field">
                                     <div class="file has-name is-fullwidth">
                                         <label class="file-label">
-                                            <input class="file-input" type="file" id="qa-file-upload">
+                                            <input class="file-input" type="file" id="qa-file-upload" multiple>
                                             <span class="file-cta">
                                                 <span class="file-icon"><i class="fas fa-file-alt"></i></span>
-                                                <span class="file-label">選擇問答集檔案…</span>
+                                                <span class="file-label">選擇問答集檔案(可多選)…</span>
                                             </span>
                                             <span id="qa-file-name-display" class="file-name">未選擇任何檔案</span>
                                         </label>
@@ -274,7 +274,13 @@
             const qaFileInput = document.getElementById('qa-file-upload');
             const qaFileNameDisplay = document.getElementById('qa-file-name-display');
             qaFileInput.addEventListener('change', () => {
-                qaFileNameDisplay.textContent = qaFileInput.files.length > 0 ? qaFileInput.files[0].name : '未選擇任何檔案';
+                if (qaFileInput.files.length > 1) {
+                    qaFileNameDisplay.textContent = `${qaFileInput.files.length} 個檔案已選擇`;
+                } else if (qaFileInput.files.length === 1) {
+                    qaFileNameDisplay.textContent = qaFileInput.files[0].name;
+                } else {
+                    qaFileNameDisplay.textContent = '未選擇任何檔案';
+                }
             });
             document.getElementById('qa-upload-btn').addEventListener('click', handleQaFileUpload);
 
@@ -306,13 +312,13 @@
             }
 
             const formData = new FormData();
-            formData.append('files', fileInput.files[0]);
+            formData.append('file', fileInput.files[0]);
 
             uploadBtn.classList.add('is-loading');
             uploadStatus.style.display = 'none';
 
             try {
-                const response = await fetch('/handle', {
+                const response = await fetch('/handle/labor_law', {
                     method: 'POST',
                     body: formData,
                 });
@@ -350,13 +356,15 @@
             }
 
             const formData = new FormData();
-            formData.append('files', fileInput.files[0]);
+            for (const file of fileInput.files) {
+                formData.append('files', file);
+            }
 
             uploadBtn.classList.add('is-loading');
             uploadStatus.style.display = 'none';
 
             try {
-                const response = await fetch('/qa', {
+                const response = await fetch('/handle/labor_law_qa', {
                     method: 'POST',
                     body: formData,
                 });
