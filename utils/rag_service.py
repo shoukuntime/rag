@@ -48,13 +48,21 @@ def retrieve_documents(state: GraphState) -> GraphState:
     print("--- Retrieving Documents ---")
     question = state["question"]
     top_k = state["top_k"]
-    
 
-    docs_with_scores = vector_store.similarity_search_with_score(question, k=top_k)
+    # Retrieve documents from two different sources
+    law_docs_with_scores = vector_store.similarity_search_with_score(
+        question, k=top_k, filter={"source": "labor_law"}
+    )
+    qa_docs_with_scores = vector_store.similarity_search_with_score(
+        question, k=top_k, filter={"source": "labor_law_qa"}
+    )
+
+    # Combine and format the documents
+    all_docs_with_scores = law_docs_with_scores + qa_docs_with_scores
     
     state["documents"] = [
-        {"page_content": doc.page_content, "metadata": doc.metadata, "score": score}
-        for doc, score in docs_with_scores
+        {"page_content": doc.page_content, "metadata": doc.metadata, "score": 1 - score}
+        for doc, score in all_docs_with_scores
     ]
     print(f"Retrieved {len(state['documents'])} documents.")
     return state
@@ -100,7 +108,7 @@ def generate_answer(state: GraphState) -> GraphState:
         "question": question,
         "answer": llm_response["answer"],
         "hit_references": llm_response.get("hit_references", []),
-        "reference": documents,  # Keep original references from vector store
+        "references": documents,
     }
     return state
 
@@ -117,7 +125,7 @@ workflow.add_edge("search_articles_in_db", "generate_answer")
 workflow.add_edge("generate_answer", END)
 
 # Compile the graph
-app = workflow.compile()
+app = workflow.compile() 
 
 def get_rag_result(question: str, top_k: int = 5) -> dict:
     """

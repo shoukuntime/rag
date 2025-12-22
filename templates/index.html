@@ -98,7 +98,7 @@
                     </div>
                     <div class="column">
                         <div class="card result-card">
-                            <header class="card-header"><p class="card-header-title">RAG 系統答案 (/query)</p></header>
+                            <header class="card-header"><p class="card-header-title">RAG 系統答案 (/query/rag)</p></header>
                             <div class="card-content">
                                 <div class="content"><strong>答案：</strong><div id="rag-answer-text" class="scrollable-content"></div></div>
                                 <div class="content"><strong>參考資料：</strong><div id="rag-references" class="scrollable-content"></div></div>
@@ -447,7 +447,7 @@
             document.getElementById('ask-references').innerHTML = '';
 
             try {
-                const ragPromise = fetch('/query', {
+                const ragPromise = fetch('/query/rag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: question, top_k: 5 })
