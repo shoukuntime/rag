@@ -8,3 +8,7 @@ class QueryRequest(BaseModel):
 class Answer(BaseModel):
     answer: str = Field(description="問題的答案。")
     hit_references: List[Dict[str, Any]] = Field(description="生成答案所引用的相關參考資料。")
+    references: Optional[List[Dict[str, Any]]] = Field(default=[], description="所有參考資料")
+
+class ArticleExtraction(BaseModel):
+    article_numbers: List[str] = Field(default=[], description="從問題或參考資料中提取的相關法條編號列表。")
