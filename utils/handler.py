@@ -109,7 +109,7 @@ def parse_qa_data(content: str):
     解析QA格式的文本，提取問題、答案和參考法條。
     """
     qa_pattern = re.compile(r'Q：(.*?)\nA：([\s\S]*?)(?=\nQ：|\Z)', re.MULTILINE)
-    ref_article_pattern = re.compile(r'第([一二三四五六七八九十]+)條(之一)?')
+    ref_article_pattern = re.compile(r'第([一二三四五六七八九十\d]+)條(之一)?')
 
     docs = []
     for match in qa_pattern.finditer(content):
@@ -119,8 +119,12 @@ def parse_qa_data(content: str):
 
         referenced_articles = set()
         for ref_match in ref_article_pattern.finditer(answer):
-            cn_num, sub_part = ref_match.groups()
-            num = chinese_to_int(cn_num)
+            num_str, sub_part = ref_match.groups()
+            if num_str.isdigit():
+                num = int(num_str)
+            else:
+                num = chinese_to_int(num_str)
+
             if num > 0:
                 article_ref_str = str(num)
                 if sub_part:

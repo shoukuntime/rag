@@ -104,11 +104,34 @@ def generate_answer(state: GraphState) -> GraphState:
     print("--- LLM Response ---")
     print(llm_response)
 
+    # Combine all potential references
+    all_references = documents + db_articles
+    
+    # Process hit_references to ensure they contain full content
+    raw_hits = llm_response.get("hit_references", [])
+    formatted_hit_references = []
+    
+    for hit in raw_hits:
+        matched = False
+        # Try to match the hit with one of the retrieved documents
+        for ref in all_references:
+            # Check if metadata matches. 
+            # The LLM might return the metadata object as the hit.
+            # We compare the metadata dictionary.
+            if ref["metadata"] == hit or ref["metadata"] == hit.get("metadata"):
+                formatted_hit_references.append(ref)
+                matched = True
+                break
+        
+        if not matched:
+            # If no match found, append the hit as is (it might be hallucinated or just metadata)
+            formatted_hit_references.append(hit)
+
     state["final_answer"] = {
         "question": question,
         "answer": llm_response["answer"],
-        "hit_references": llm_response.get("hit_references", []),
-        "references": documents,
+        "hit_references": formatted_hit_references,
+        "references": all_references,
     }
     return state
 

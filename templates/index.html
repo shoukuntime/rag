@@ -101,7 +101,8 @@
                             <header class="card-header"><p class="card-header-title">RAG 系統答案 (/query/rag)</p></header>
                             <div class="card-content">
                                 <div class="content"><strong>答案：</strong><div id="rag-answer-text" class="scrollable-content"></div></div>
-                                <div class="content"><strong>參考資料：</strong><div id="rag-references" class="scrollable-content"></div></div>
+                                <div class="content"><strong>使用到的參考資料 (Hit References)：</strong><div id="rag-hit-references" class="scrollable-content"></div></div>
+                                <div class="content"><strong>所有檢索到的參考資料 (All References)：</strong><div id="rag-references" class="scrollable-content"></div></div>
                             </div>
                         </div>
                     </div>
@@ -442,6 +443,7 @@
 
             document.getElementById('original-answer').textContent = '';
             document.getElementById('rag-answer-text').textContent = '';
+            document.getElementById('rag-hit-references').innerHTML = '';
             document.getElementById('rag-references').innerHTML = '';
             document.getElementById('ask-answer-text').textContent = '';
             document.getElementById('ask-references').innerHTML = '';
@@ -461,7 +463,8 @@
 
                 document.getElementById('original-answer').textContent = originalAnswer;
                 document.getElementById('rag-answer-text').textContent = ragResult.response.answer;
-                document.getElementById('rag-references').innerHTML = `<pre>${JSON.stringify(ragResult.response.hit_references, null, 2)}</pre>`;
+                document.getElementById('rag-hit-references').innerHTML = `<pre>${JSON.stringify(ragResult.response.hit_references, null, 2)}</pre>`;
+                document.getElementById('rag-references').innerHTML = `<pre>${JSON.stringify(ragResult.response.references, null, 2)}</pre>`;
                 document.getElementById('ask-answer-text').textContent = askResult.response.answer;
                 document.getElementById('ask-references').innerHTML = `<pre>${JSON.stringify(askResult.response.hit_references, null, 2)}</pre>`;
                 
