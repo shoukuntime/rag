@@ -4,9 +4,8 @@ services:
   api:
     build: .
     container_name: rag-api
-    # 這裡可以移除 ports 8000:8000，因為我們改由 Nginx 轉發，不需對外開放
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
     env_file:
@@ -15,12 +14,6 @@ services:
       DATABASE_URL: ${POSTGRES_URI}
     depends_on:
       - db
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '0.80'    # 限制 API 最多使用 80% 的單核 CPU
-          memory: 1G      # 限制 1GB 記憶體
 
   db:
     image: pgvector/pgvector:pg13
@@ -35,32 +28,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'    # 限制資料庫最多使用 50% CPU
-          memory: 1G
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx-proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro  # 為之後 SSL 憑證預留
-    depends_on:
-      - api
-    restart: always
 
   adminer:
     image: adminer
     container_name: rag-adminer
     ports:
       - "8080:8080"
-    restart: on-failure # 這種管理工具不需要一直重啟
 
 volumes:
   postgres_data:
